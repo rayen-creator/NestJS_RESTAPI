@@ -9,3 +9,30 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+model User{
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  email String @unique
+  hash String
+  firstname String?
+  lastname String?
+
+  bookmarks Bookmark[]
+  @@map("users")
+}
+model Bookmark{
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title String
+  description String
+  link String
+
+  userId Int
+  users User @relation(fields: [userId],references: [id] )
+
+  @@map("bookmarks")
+}
