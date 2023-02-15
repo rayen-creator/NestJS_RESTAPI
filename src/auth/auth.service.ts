@@ -1,13 +1,19 @@
+import { ConfigService } from '@nestjs/config/dist';
+import { JwtPayload, Secret } from './../../node_modules/@types/jsonwebtoken/index.d';
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { AuthDto } from './dto/auth.dto';
 import * as argon from "argon2";
 import { ForbiddenException } from "@nestjs/common/exceptions";
 import { Prisma } from '@prisma/client'
+import { JwtService } from "@nestjs/jwt/dist";
 
 @Injectable()
 export class AuthService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService,
+        private jwt: JwtService,
+        private config: ConfigService
+    ) { }
 
     async signup(dto: AuthDto) {
         const hash = await argon.hash(dto.password);
@@ -18,9 +24,11 @@ export class AuthService {
                     hash
                 },
             });
-            //delete the hash from the object before return it
-            delete user.hash
-            return user;
+            // //delete the hash from the object before return it
+            // delete user.hash
+            // return user;
+            return this.signToken(user.id, user.email);
+
 
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -47,8 +55,25 @@ export class AuthService {
         if (!valid) {
             throw new ForbiddenException('Invalid credentials');
         }
-        //delete the hash from the object before return it
-        delete user.hash;
-        return user;
+        // delete the hash from the object before return it
+        // delete user.hash;
+
+        return this.signToken(user.id, user.email);
+    }
+    async signToken(userId: number, email: string): Promise<{access_token : string}> {
+        const Secret = this.config.get('JWT_SECRET');
+        const payload=  {
+            sub: userId,
+            email
+        }
+       const token=await this.jwt.signAsync(payload , {
+            expiresIn: '15m',
+            secret: Secret
+        });
+       
+        return {
+            access_token : token
+        }
+      
     }
 }
